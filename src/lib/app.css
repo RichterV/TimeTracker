@@ -1,0 +1,146 @@
+:root {
+  --fundo: #f6f7f9;
+  --superficie: #ffffff;
+  --superficie-2: #f0f2f5;
+  --borda: #e2e5ea;
+  --texto: #1d2129;
+  --texto-2: #626a77;
+  --destaque: #3b6fe0;
+  --destaque-texto: #ffffff;
+  --perigo: #d1453b;
+  --ok: #2f9e5b;
+  --raio: 8px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #16181c;
+    --superficie: #1f2228;
+    --superficie-2: #282c33;
+    --borda: #343943;
+    --texto: #e6e8ec;
+    --texto-2: #9aa2ae;
+    --destaque: #5b8cf5;
+    --perigo: #e5675e;
+    --ok: #4cc27c;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  user-select: none;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+input,
+select,
+textarea {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  padding: 6px 8px;
+  user-select: text;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--destaque);
+  outline-offset: -1px;
+}
+
+button {
+  background: var(--superficie-2);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(0.97);
+}
+
+button.primario {
+  background: var(--destaque);
+  border-color: var(--destaque);
+  color: var(--destaque-texto);
+}
+
+button.perigo {
+  color: var(--perigo);
+}
+
+button.icone {
+  background: transparent;
+  border-color: transparent;
+  padding: 4px 8px;
+  color: var(--texto-2);
+}
+
+button.icone:hover {
+  background: var(--superficie-2);
+  color: var(--texto);
+}
+
+button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  min-width: 0;
+}
+
+button.link:hover {
+  text-decoration: underline;
+  filter: none;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ponto {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.secundario {
+  color: var(--texto-2);
+}
+
+.cartao {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+}
+
+.erro {
+  color: var(--perigo);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}

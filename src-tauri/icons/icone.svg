@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4f86f0"/>
+      <stop offset="1" stop-color="#2f5fcf"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="220" fill="url(#fundo)"/>
+  <!-- botão do cronômetro -->
+  <rect x="462" y="118" width="100" height="70" rx="22" fill="#ffffff"/>
+  <rect x="487" y="170" width="50" height="60" fill="#ffffff"/>
+  <!-- mostrador -->
+  <circle cx="512" cy="562" r="330" fill="#ffffff"/>
+  <circle cx="512" cy="562" r="282" fill="#eaf1ff"/>
+  <!-- marcas 12, 3, 6, 9 -->
+  <g stroke="#2f5fcf" stroke-width="30" stroke-linecap="round">
+    <line x1="512" y1="306" x2="512" y2="352"/>
+    <line x1="768" y1="562" x2="722" y2="562"/>
+    <line x1="512" y1="818" x2="512" y2="772"/>
+    <line x1="256" y1="562" x2="302" y2="562"/>
+  </g>
+  <!-- ponteiros -->
+  <g stroke="#1d2a4d" stroke-linecap="round">
+    <line x1="512" y1="562" x2="512" y2="392" stroke-width="40"/>
+    <line x1="512" y1="562" x2="642" y2="642" stroke-width="40"/>
+  </g>
+  <circle cx="512" cy="562" r="36" fill="#1d2a4d"/>
+</svg>

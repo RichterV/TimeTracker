@@ -1,0 +1,18 @@
+.DS_Store
+node_modules
+/build
+/.svelte-kit
+/package
+.env
+.env.*
+!.env.example
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# dados pessoais do 8Pace, caso a pasta de dados aponte para dentro do projeto
+*.db
+*.db-wal
+*.db-shm
+anexos/
+local.json
+*.log
