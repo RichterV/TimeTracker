@@ -5,6 +5,7 @@
   import { estado } from "./estado.svelte";
   import { DIAS_CURTOS } from "./tempo";
   import Tipos from "./Tipos.svelte";
+  import Folgas from "./Folgas.svelte";
 
   let cfg = $state<Config>($state.snapshot(estado.config!));
   let metaHoras = $state(cfg.meta_diaria_min / 60);
@@ -43,6 +44,18 @@
       : [...cfg.dias_uteis, d].sort();
   }
 
+  const FACULTATIVOS = [
+    { id: "carnaval", nome: "Carnaval (segunda e terça)" },
+    { id: "cinzas", nome: "Quarta de Cinzas (até 14h, meta pela metade)" },
+    { id: "corpus", nome: "Corpus Christi" },
+  ];
+
+  function alternarFacultativo(id: string) {
+    cfg.facultativos = cfg.facultativos.includes(id)
+      ? cfg.facultativos.filter((x) => x !== id)
+      : [...cfg.facultativos, id];
+  }
+
   async function salvar(e: SubmitEvent) {
     e.preventDefault();
     erro = mensagem = "";
@@ -50,6 +63,7 @@
     try {
       await api.salvarConfig($state.snapshot(cfg));
       estado.config = await api.obterConfig();
+      await estado.recarregarEspeciais();
       mensagem = "Configurações salvas.";
     } catch (x) {
       erro = String(x);
@@ -90,6 +104,17 @@
         </button>
       </div>
     </div>
+  </section>
+
+  <section class="cartao">
+    <h2>Feriados</h2>
+    <p class="dica secundario">Feriados nacionais são marcados automaticamente. Pontos facultativos considerados:</p>
+    {#each FACULTATIVOS as f}
+      <label class="campo opcao">
+        <span>{f.nome}</span>
+        <input type="checkbox" checked={cfg.facultativos.includes(f.id)} onchange={() => alternarFacultativo(f.id)} />
+      </label>
+    {/each}
   </section>
 
   <section class="cartao">
@@ -141,6 +166,7 @@
 </form>
 
 <div class="tipos"><Tipos /></div>
+<div class="tipos"><Folgas /></div>
 
 <style>
   .tipos {

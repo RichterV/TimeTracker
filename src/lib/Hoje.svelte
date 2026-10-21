@@ -3,9 +3,9 @@
   import { estado } from "./estado.svelte";
   import RegistroModal from "./RegistroModal.svelte";
   import IconeTipo from "./IconeTipo.svelte";
+  import SeloEspecial from "./SeloEspecial.svelte";
   import {
     DIA_SEG,
-    diaDaSemana,
     duracaoEm,
     fmtDataLonga,
     fmtDur,
@@ -32,9 +32,12 @@
   });
 
   const total = $derived(registros.reduce((s, r) => s + duracaoEm(r, de, ate, estado.agora), 0));
-  const meta = $derived(
-    estado.config && estado.config.dias_uteis.includes(diaDaSemana(dia)) ? estado.config.meta_diaria_min * 60 : 0,
-  );
+  const meta = $derived(estado.metaDoDia(dia));
+  const especial = $derived(estado.especial(dia));
+
+  $effect(() => {
+    estado.garantirAnos(dia.getFullYear());
+  });
 
   const porAtividade = $derived.by(() => {
     const m = new Map<number, { nome: string; projeto: string; cor: string; seg: number }>();
@@ -69,7 +72,12 @@
   <button onclick={() => (editando = null)} disabled={estado.atividades.length === 0}>+ Lançar tempo</button>
 </div>
 
-{#if ehHoje}<p class="secundario subtitulo">{fmtDataLonga(dia)}</p>{/if}
+{#if ehHoje || especial}
+  <p class="secundario subtitulo">
+    {#if ehHoje}{fmtDataLonga(dia)}{/if}
+    <SeloEspecial dia={especial} />
+  </p>
+{/if}
 
 <section class="cartao resumo">
   <div class="totais">

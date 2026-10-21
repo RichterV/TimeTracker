@@ -4,13 +4,18 @@
   import { api } from "./api";
   import { estado, type AtividadeItem } from "./estado.svelte";
   import IconeTipo from "./IconeTipo.svelte";
+  import NovaAtividade from "./NovaAtividade.svelte";
+  import { Plus } from "@lucide/svelte";
   import { DIA_SEG, fmtRelogio } from "./tempo";
 
   const PARAR = -1;
+  const CRIAR = -2;
 
   let busca = $state("");
+  /** Formulário de nova atividade aberto (com o nome sugerido). */
+  let criando = $state<string | null>(null);
   let selecionado = $state(0);
-  let campo: HTMLInputElement;
+  let campo = $state<HTMLInputElement>();
   /** atividade_id -> último início, para ordenar pelas mais recentes */
   let recentes = $state(new Map<number, number>());
 
@@ -19,7 +24,7 @@
 
   const itens = $derived.by(() => {
     const termos = normalizar(busca).split(/\s+/).filter(Boolean);
-    const lista: (AtividadeItem & { parar?: boolean })[] = estado.atividades
+    const lista: (AtividadeItem & { parar?: boolean; criar?: boolean })[] = estado.atividades
       .filter((a) => a.id !== estado.rodando?.atividade_id || termos.length > 0)
       .filter((a) => {
         const texto = normalizar(`${a.projeto} ${a.nome}`);
@@ -36,6 +41,9 @@
         tipo_id: null,
         parar: true,
       });
+    }
+    if (termos.length > 0) {
+      lista.push({ id: CRIAR, nome: busca.trim(), projeto: "", cor: "transparent", status: "nao_iniciada", tipo_id: null, criar: true });
     }
     return lista;
   });
@@ -56,7 +64,8 @@
   async function preparar() {
     busca = "";
     selecionado = 0;
-    await Promise.all([estado.recarregarProjetos(), estado.recarregarTimer()]);
+    criando = null;
+    await Promise.all([estado.recarregarProjetos(), estado.recarregarTimer(), estado.recarregarTipos()]);
     const fim = estado.agora;
     const regs = await api.listarRegistros(fim - 14 * DIA_SEG, fim);
     recentes = new Map(regs.map((r) => [r.atividade_id, r.inicio]));
@@ -73,6 +82,7 @@
   async function escolher(i: number) {
     const item = itens[i];
     if (!item) return;
+    if (item.criar) return (criando = item.nome);
     if (!item.parar && item.status === "concluida" && confirmando !== item.id) {
       confirmando = item.id;
       return;
@@ -82,7 +92,31 @@
     api.fecharSeletor();
   }
 
+  async function criada(id: number, iniciar: boolean) {
+    if (iniciar) {
+      await api.iniciar(id);
+      api.fecharSeletor();
+    } else {
+      criando = null;
+      busca = "";
+      await tick();
+      campo?.focus();
+    }
+  }
+
+  async function voltar() {
+    criando = null;
+    await tick();
+    campo?.focus();
+  }
+
   function tecla(e: KeyboardEvent) {
+    if (e.key === "n" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      criando = criando === null ? busca.trim() : null;
+      return;
+    }
+    if (criando !== null) return; // o formulário trata as teclas
     if (e.key === "Escape") api.fecharSeletor();
     else if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -104,13 +138,24 @@
 <svelte:window onblur={() => api.fecharSeletor()} onkeydown={tecla} />
 
 <div class="seletor">
-  <input bind:this={campo} bind:value={busca} placeholder="Buscar atividade ou projeto..." spellcheck="false" />
+  {#if criando !== null}
+    <NovaAtividade nomeInicial={criando} oncriada={criada} oncancelar={voltar} />
+  {:else}
+  <div class="busca">
+    <input bind:this={campo} bind:value={busca} placeholder="Buscar atividade ou projeto..." spellcheck="false" />
+    <button class="mais" title="Nova atividade (Ctrl+N)" onclick={() => (criando = busca.trim())}>
+      <Plus size={18} />
+    </button>
+  </div>
   <ul>
     {#each itens as item, i (item.id)}
       <li data-indice={i}>
         <button class:ativo={i === selecionado} onmouseenter={() => (selecionado = i)} onclick={() => escolher(i)}>
           <span class="ponto" style:background={item.cor}></span>
-          {#if item.parar}
+          {#if item.criar}
+            <Plus size={15} />
+            <span class="nome">Criar atividade <strong>“{item.nome}”</strong></span>
+          {:else if item.parar}
             <span class="nome"><strong>Parar</strong> {item.nome} <span class="secundario">· {item.projeto}</span></span>
             <span class="num secundario">{fmtRelogio(estado.agora - (estado.rodando?.inicio ?? 0))}</span>
           {:else}
@@ -130,7 +175,10 @@
       </li>
     {/each}
   </ul>
-  <footer class="secundario">↑↓ navegar · Enter iniciar · Esc fechar</footer>
+  {/if}
+  <footer class="secundario">
+    {criando !== null ? "Enter criar e iniciar · Shift+Enter só criar · Esc voltar" : "↑↓ navegar · Enter iniciar · Ctrl+N nova atividade · Esc fechar"}
+  </footer>
 </div>
 
 <style>
@@ -142,10 +190,29 @@
     border: 1px solid var(--borda);
   }
 
-  input {
+  .busca {
+    display: flex;
+    gap: 6px;
     margin: 12px;
+  }
+
+  .busca input {
+    flex: 1;
     padding: 10px 12px;
     font-size: 16px;
+  }
+
+  .mais {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    padding: 0;
+    color: var(--destaque);
+  }
+
+  footer {
+    margin-top: auto;
   }
 
   ul {

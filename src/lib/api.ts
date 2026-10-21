@@ -88,7 +88,18 @@ export type Config = {
   lembrete_intervalo_min: number;
   atalho: string;
   iniciar_com_windows: boolean;
+  facultativos: string[];
 };
+
+export type DiaEspecial = {
+  /** AAAA-MM-DD */
+  data: string;
+  nome: string;
+  tipo: "feriado" | "folga" | "facultativo" | "meio";
+  a_partir: string | null;
+};
+
+export type Folga = { id: number; inicio: string; fim: string; descricao: string };
 
 export type Ociosidade = { registro_id: number; inicio: number; fim: number };
 
@@ -116,6 +127,12 @@ export const api = {
     invoke<Comentario>("salvar_comentario", { atividadeId, id, texto }),
   excluirComentario: (id: number) => invoke<void>("excluir_comentario", { id }),
   abrirLink: (url: string) => invoke<void>("abrir_link", { url }),
+
+  diasEspeciais: (de: string, ate: string) => invoke<DiaEspecial[]>("dias_especiais", { de, ate }),
+  listarFolgas: () => invoke<Folga[]>("listar_folgas"),
+  criarFolga: (inicio: string, fim: string, descricao: string) =>
+    invoke<number>("criar_folga", { inicio, fim, descricao }),
+  excluirFolga: (id: number) => invoke<void>("excluir_folga", { id }),
 
   listarListas: () => invoke<Lista[]>("listar_listas"),
   criarLista: (nome: string) => invoke<number>("criar_lista", { nome }),

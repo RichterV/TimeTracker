@@ -1,7 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
-import { api, type Config, type Projeto, type Registro, type Status, type Tipo } from "./api";
+import { api, type Config, type DiaEspecial, type Intervalo, type Projeto, type Registro, type Status, type Tipo } from "./api";
 import { encerrada, infoStatus } from "./status";
-import { agoraSeg } from "./tempo";
+import { agoraSeg, diaDaSemana, paraInputData } from "./tempo";
 
 export type AtividadeItem = {
   id: number;
@@ -28,6 +28,9 @@ class Estado {
   /** Atividade exibida no painel de detalhes. */
   atividadeAberta = $state<number | null>(null);
   confirmacao = $state<Confirmacao | null>(null);
+  /** Feriados, facultativos e folgas por data (AAAA-MM-DD), dos anos já carregados. */
+  especiais = $state(new Map<string, DiaEspecial>());
+  #anos = new Set<number>();
 
   /** Atividades disponíveis para iniciar (projeto ativo, atividade não finalizada). */
   atividades = $derived<AtividadeItem[]>(
@@ -50,6 +53,7 @@ class Estado {
     this.#iniciado = true;
     setInterval(() => (this.agora = agoraSeg()), 1000);
     await listen("timer-mudou", () => {
+      this.recarregarEspeciais();
       this.recarregarTimer();
       this.recarregarProjetos();
       this.recarregarTipos();
@@ -61,10 +65,58 @@ class Estado {
       this.recarregarTimer(),
       api.obterConfig().then((c) => (this.config = c)),
     ]);
+    const ano = new Date().getFullYear();
+    await this.garantirAnos(ano - 1, ano + 1);
   }
 
   async recarregarProjetos() {
     this.projetos = await api.listarProjetos();
+  }
+
+  /** Carrega os dias especiais dos anos indicados (se ainda não carregados). */
+  async garantirAnos(...anos: number[]) {
+    const faltam = anos.filter((a) => !this.#anos.has(a));
+    if (faltam.length === 0) return;
+    faltam.forEach((a) => this.#anos.add(a));
+    const de = `${Math.min(...faltam)}-01-01`;
+    const ate = `${Math.max(...faltam)}-12-31`;
+    const lista = await api.diasEspeciais(de, ate);
+    const m = new Map(this.especiais);
+    lista.forEach((d) => m.set(d.data, d));
+    this.especiais = m;
+  }
+
+  /** Recarrega tudo (após mudar folgas ou facultativos). */
+  async recarregarEspeciais() {
+    if (this.#anos.size === 0) return;
+    const anos = [...this.#anos];
+    const lista = await api.diasEspeciais(`${Math.min(...anos)}-01-01`, `${Math.max(...anos)}-12-31`);
+    this.especiais = new Map(lista.map((d) => [d.data, d]));
+  }
+
+  especial(d: Date): DiaEspecial | undefined {
+    return this.especiais.get(paraInputData(d));
+  }
+
+  /** Meta do dia em segundos: zero fora dos dias úteis, em feriados e folgas; metade em meio período. */
+  metaDoDia(d: Date): number {
+    if (!this.config || !this.config.dias_uteis.includes(diaDaSemana(d))) return 0;
+    const meta = this.config.meta_diaria_min * 60;
+    const e = this.especial(d);
+    if (!e) return meta;
+    return e.tipo === "meio" ? Math.round(meta / 2) : 0;
+  }
+
+  /** Intervalos de expediente do dia, já considerando feriados, folgas e meio período. */
+  expedienteDoDia(d: Date): Intervalo[] {
+    if (!this.config || !this.config.dias_uteis.includes(diaDaSemana(d))) return [];
+    const e = this.especial(d);
+    if (!e) return this.config.expediente;
+    if (e.tipo !== "meio" || !e.a_partir) return [];
+    const corte = e.a_partir;
+    return this.config.expediente
+      .filter((i) => i.fim > corte)
+      .map((i) => ({ inicio: i.inicio < corte ? corte : i.inicio, fim: i.fim }));
   }
 
   async recarregarTipos() {

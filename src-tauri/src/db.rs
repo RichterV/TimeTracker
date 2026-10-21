@@ -106,6 +106,14 @@ const MIGRACOES: &[&str] = &[r#"
         criado INTEGER NOT NULL
     );
     CREATE INDEX idx_tarefa_lista ON tarefa(lista_id, pai_id, ordem);
+"#, r#"
+    -- folgas e férias (datas AAAA-MM-DD, inclusivas)
+    CREATE TABLE folga (
+        id INTEGER PRIMARY KEY,
+        inicio TEXT NOT NULL,
+        fim TEXT NOT NULL,
+        descricao TEXT NOT NULL DEFAULT ''
+    );
 "#];
 
 pub const STATUS: &[&str] = &["nao_iniciada", "em_andamento", "concluida", "finalizada"];
@@ -140,6 +148,8 @@ pub struct Config {
     pub lembrete_intervalo_min: u32,
     pub atalho: String,
     pub iniciar_com_windows: bool,
+    /// pontos facultativos considerados: "carnaval", "cinzas", "corpus"
+    pub facultativos: Vec<String>,
 }
 
 impl Default for Config {
@@ -156,6 +166,7 @@ impl Default for Config {
             lembrete_intervalo_min: 15,
             atalho: "Ctrl+Alt+Space".into(),
             iniciar_com_windows: true,
+            facultativos: vec!["carnaval".into(), "cinzas".into(), "corpus".into()],
         }
     }
 }

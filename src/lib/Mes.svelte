@@ -2,7 +2,8 @@
   import { api, type Registro } from "./api";
   import { estado } from "./estado.svelte";
   import IconeTipo from "./IconeTipo.svelte";
-  import { DIAS_CURTOS, diaDaSemana, duracaoEm, fmtDur, inicioSemana, mesmoDia, seg, somarDias } from "./tempo";
+  import SeloEspecial from "./SeloEspecial.svelte";
+  import { DIAS_CURTOS, duracaoEm, fmtDur, inicioSemana, mesmoDia, seg, somarDias } from "./tempo";
 
   let { onabrirdia }: { onabrirdia: (d: Date) => void } = $props();
 
@@ -76,16 +77,19 @@
     return { lista, total };
   });
 
-  const diasUteis = $derived.by(() => {
-    if (!estado.config) return 0;
-    let n = 0;
-    for (let d = new Date(mes); d < proximoMes; d = somarDias(d, 1)) {
-      if (estado.config.dias_uteis.includes(diaDaSemana(d))) n++;
-    }
-    return n;
+  /** Dias do mês com meta (meio período conta como meio dia). */
+  const metasDoMes = $derived.by(() => {
+    const lista: number[] = [];
+    for (let d = new Date(mes); d < proximoMes; d = somarDias(d, 1)) lista.push(estado.metaDoDia(d));
+    return lista;
   });
-  const meta = $derived((estado.config?.meta_diaria_min ?? 0) * 60 * diasUteis);
-  const metaDia = $derived((estado.config?.meta_diaria_min ?? 0) * 60);
+  const meta = $derived(metasDoMes.reduce((a, b) => a + b, 0));
+  const metaCheia = $derived((estado.config?.meta_diaria_min ?? 0) * 60);
+  const diasUteis = $derived(metaCheia > 0 ? Math.round((meta / metaCheia) * 2) / 2 : 0);
+
+  $effect(() => {
+    estado.garantirAnos(mes.getFullYear());
+  });
   const hoje = $derived(new Date(estado.agora * 1000));
   const titulo = $derived(mes.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }));
   const pct = (s: number, t: number) => (t > 0 ? Math.round((s / t) * 100) : 0);
@@ -115,8 +119,9 @@
       {#if c.doMes}
         <button class="dia" class:hoje={mesmoDia(c.data, hoje)} onclick={() => onabrirdia(c.data)}>
           <span class="numero">{c.data.getDate()}</span>
+          <SeloEspecial dia={estado.especial(c.data)} compacto />
           {#if c.total > 0}
-            <span class="num horas" class:meta={metaDia > 0 && c.total >= metaDia}>{fmtDur(c.total)}</span>
+            <span class="num horas" class:meta={estado.metaDoDia(c.data) > 0 && c.total >= estado.metaDoDia(c.data)}>{fmtDur(c.total)}</span>
             <span class="fatias">
               {#each c.fatias as f}
                 <span style:background={f.cor} style:flex-grow={f.seg}></span>

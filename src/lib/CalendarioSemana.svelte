@@ -3,6 +3,7 @@
   import { estado } from "./estado.svelte";
   import IconeTipo from "./IconeTipo.svelte";
   import RegistroModal from "./RegistroModal.svelte";
+  import SeloEspecial from "./SeloEspecial.svelte";
   import { DIAS_CURTOS, diaDaSemana, duracaoEm, fmtDur, fmtHora, mesmoDia, seg, somarDias } from "./tempo";
 
   let {
@@ -22,7 +23,7 @@
     return h + m / 60;
   };
 
-  type Dia = { data: Date; ini: number; fim: number; nome: string; util: boolean };
+  type Dia = { data: Date; ini: number; fim: number; nome: string; util: boolean; expediente: { inicio: string; fim: string }[] };
 
   const todos = $derived<Dia[]>(
     Array.from({ length: 7 }, (_, i) => {
@@ -32,14 +33,16 @@
         ini: seg(data),
         fim: seg(somarDias(data, 1)),
         nome: DIAS_CURTOS[i],
-        util: estado.config?.dias_uteis.includes(diaDaSemana(data)) ?? i < 5,
+        // feriado/folga/facultativo deixam o dia com fundo de dia não útil
+        util: (estado.config?.dias_uteis.includes(diaDaSemana(data)) ?? i < 5) && estado.expedienteDoDia(data).length > 0,
+        expediente: estado.expedienteDoDia(data),
       };
     }),
   );
 
   // dias úteis sempre; demais dias quando pedido ou quando têm registro
   const dias = $derived(
-    todos.filter((d) => verFimDeSemana || d.util || registros.some((r) => duracaoEm(r, d.ini, d.fim, estado.agora) > 0)),
+    todos.filter((d) => verFimDeSemana || d.util || estado.config?.dias_uteis.includes(diaDaSemana(d.data)) || registros.some((r) => duracaoEm(r, d.ini, d.fim, estado.agora) > 0)),
   );
 
   // ---------- arraste ----------
@@ -277,6 +280,7 @@
         <span class="numero">{d.data.getDate()}</span>
         <span class="nome-dia">{d.nome}</span>
         {#if total > 0}<span class="total num">{fmtDur(total)}</span>{/if}
+        {#if estado.especial(d.data)}<div class="especial"><SeloEspecial dia={estado.especial(d.data)} compacto /></div>{/if}
       </div>
     {/each}
   </div>
@@ -299,7 +303,7 @@
         onpointerdown={(e) => iniciarCriacao(e, i)}
       >
         {#if d.util}
-          {#each estado.config?.expediente ?? [] as exp}
+          {#each d.expediente as exp}
             <div
               class="expediente"
               style:top="{(horaDe(exp.inicio) - faixa.h0) * PX_HORA}px"
@@ -413,6 +417,16 @@
   .nome-dia {
     color: var(--texto-2);
     font-size: 12px;
+  }
+
+  .dia-cab {
+    flex-wrap: wrap;
+  }
+
+  .especial {
+    flex-basis: 100%;
+    min-width: 0;
+    line-height: 1;
   }
 
   .dia-cab .total {

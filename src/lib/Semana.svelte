@@ -3,6 +3,7 @@
   import { estado } from "./estado.svelte";
   import IconeTipo from "./IconeTipo.svelte";
   import CalendarioSemana from "./CalendarioSemana.svelte";
+  import SeloEspecial from "./SeloEspecial.svelte";
   import {
     DIAS_CURTOS,
     DIA_SEG,
@@ -75,9 +76,11 @@
     return { grupos: lista, totais, total: totais.reduce((a, b) => a + b, 0) };
   });
 
-  const metaSemana = $derived(
-    estado.config ? estado.config.meta_diaria_min * 60 * estado.config.dias_uteis.length : 0,
-  );
+  const metaSemana = $derived(dias.reduce((s, d) => s + estado.metaDoDia(d), 0));
+
+  $effect(() => {
+    estado.garantirAnos(dias[0].getFullYear(), dias[6].getFullYear());
+  });
   const hoje = $derived(new Date(estado.agora * 1000));
   const fmt = (s: number) => (s > 0 ? fmtDur(s) : "");
 </script>
@@ -116,9 +119,10 @@
         <th class="nome">Atividade</th>
         {#each dias as d, i}
           <th class:hoje={mesmoDia(d, hoje)}>
-            <button class="dia" onclick={() => onabrirdia(d)} title="Ver o dia">
+            <button class="dia" onclick={() => onabrirdia(d)} title={estado.especial(d)?.nome ?? "Ver o dia"}>
               {DIAS_CURTOS[i]} <span class="secundario">{d.getDate()}</span>
             </button>
+            {#if estado.especial(d)}<div><SeloEspecial dia={estado.especial(d)} compacto /></div>{/if}
           </th>
         {/each}
         <th>Total</th>

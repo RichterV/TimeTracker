@@ -1,4 +1,5 @@
 mod db;
+mod feriados;
 mod ociosidade;
 mod tarefas;
 
@@ -177,12 +178,20 @@ fn criar_tray(app: &AppHandle) -> tauri::Result<()> {
 
 // ---------- ciclo de fundo: ociosidade, lembrete, bandeja ----------
 
-fn no_expediente(cfg: &Config) -> bool {
+fn no_expediente(conn: &Connection, cfg: &Config) -> bool {
     let agora = Local::now();
     if !cfg.dias_uteis.contains(&agora.weekday().number_from_monday()) {
         return false;
     }
+    let hoje = agora.date_naive();
     let hora = agora.format("%H:%M").to_string();
+    // feriado, folga ou facultativo: sem expediente; meio período só depois do horário indicado
+    if let Some(especial) = feriados::no_periodo(conn, hoje, hoje, &cfg.facultativos).ok().and_then(|v| v.into_iter().next()) {
+        match especial.a_partir {
+            Some(a_partir) if hora >= a_partir => {}
+            _ => return false,
+        }
+    }
     cfg.expediente
         .iter()
         .any(|i| hora.as_str() >= i.inicio.as_str() && hora.as_str() < i.fim.as_str())
@@ -194,10 +203,10 @@ fn ciclo(app: &AppHandle, contador: u64) {
     let t = agora();
     let ocioso = ociosidade::segundos_ocioso();
     let limite = cfg.ociosidade_min as i64 * 60;
-    let rodando = {
+    let (rodando, expediente) = {
         let conn = estado.db.lock().unwrap();
         let _ = db::registrar_batimento(&conn, t);
-        db::registro_rodando(&conn).ok().flatten()
+        (db::registro_rodando(&conn).ok().flatten(), no_expediente(&conn, &cfg))
     };
 
     let mut avisar_ocio = false;
@@ -243,7 +252,7 @@ fn ciclo(app: &AppHandle, contador: u64) {
         if rodando.is_none()
             && cfg.lembrete_ativo
             && ocioso < 300
-            && no_expediente(&cfg)
+            && expediente
             && t - o.ultimo_lembrete >= cfg.lembrete_intervalo_min.max(1) as i64 * 60
         {
             o.ultimo_lembrete = t;
@@ -397,6 +406,41 @@ fn excluir_comentario(app: AppHandle, estado: State<Estado>, id: i64) -> Res<()>
     for a in anexos {
         let _ = std::fs::remove_file(pasta.join(&a.arquivo));
     }
+    Ok(())
+}
+
+// ---------- feriados e folgas ----------
+
+fn data_param(s: &str) -> Res<chrono::NaiveDate> {
+    chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").map_err(|_| format!("Data inválida: {s}"))
+}
+
+/// Feriados, facultativos e folgas entre `de` e `ate` (AAAA-MM-DD, inclusivo).
+#[tauri::command]
+fn dias_especiais(estado: State<Estado>, de: String, ate: String) -> Res<Vec<feriados::DiaEspecial>> {
+    let facultativos = estado.config.lock().unwrap().facultativos.clone();
+    feriados::no_periodo(&estado.db.lock().unwrap(), data_param(&de)?, data_param(&ate)?, &facultativos).map_err(erro)
+}
+
+#[tauri::command]
+fn listar_folgas(estado: State<Estado>) -> Res<Vec<feriados::Folga>> {
+    feriados::listar_folgas(&estado.db.lock().unwrap()).map_err(erro)
+}
+
+#[tauri::command]
+fn criar_folga(app: AppHandle, estado: State<Estado>, inicio: String, fim: String, descricao: String) -> Res<i64> {
+    if data_param(&fim)? < data_param(&inicio)? {
+        return Err("O fim precisa ser igual ou depois do início.".into());
+    }
+    let id = feriados::criar_folga(&estado.db.lock().unwrap(), &inicio, &fim, descricao.trim()).map_err(erro)?;
+    timer_mudou(&app);
+    Ok(id)
+}
+
+#[tauri::command]
+fn excluir_folga(app: AppHandle, estado: State<Estado>, id: i64) -> Res<()> {
+    feriados::excluir_folga(&estado.db.lock().unwrap(), id).map_err(erro)?;
+    timer_mudou(&app);
     Ok(())
 }
 
@@ -921,6 +965,10 @@ pub fn run() {
             salvar_comentario,
             excluir_comentario,
             abrir_link,
+            dias_especiais,
+            listar_folgas,
+            criar_folga,
+            excluir_folga,
             listar_listas,
             criar_lista,
             renomear_lista,

@@ -69,7 +69,7 @@
     margin: 0;
     padding: 4px;
     min-width: 200px;
-    max-height: 320px;
+    max-height: 230px;
     overflow-y: auto;
     box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
   }

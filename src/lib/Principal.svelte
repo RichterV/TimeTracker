@@ -14,14 +14,15 @@
   import AtividadePainel from "./AtividadePainel.svelte";
   import Confirmacao from "./Confirmacao.svelte";
   import IconeTipo from "./IconeTipo.svelte";
+  import type { Status } from "./api";
 
   type Aba = "hoje" | "semana" | "mes" | "tarefas" | "projetos" | "config";
   const abas: { id: Aba; nome: string }[] = [
     { id: "hoje", nome: "Dia" },
     { id: "semana", nome: "Semana" },
     { id: "mes", nome: "Mês" },
-    { id: "tarefas", nome: "Tarefas" },
     { id: "projetos", nome: "Projetos" },
+    { id: "tarefas", nome: "Tarefas" },
     { id: "config", nome: "Configurações" },
   ];
 
@@ -35,11 +36,25 @@
     return () => desligar.then((f) => f());
   });
 
+  let menuMarcar = $state(false);
+  let raizMarcar = $state<HTMLDivElement>();
+
+  /** Para o timer e marca a atividade que estava rodando. */
+  async function marcarComo(status: Status) {
+    menuMarcar = false;
+    const r = estado.rodando;
+    if (!r) return;
+    await api.parar();
+    await api.definirStatus(r.atividade_id, status);
+  }
+
   function abrirDia(d: Date) {
     dia = d;
     aba = "hoje";
   }
 </script>
+
+<svelte:window onclick={(e) => menuMarcar && !raizMarcar?.contains(e.target as Node) && (menuMarcar = false)} />
 
 <div class="app">
   <header>
@@ -56,6 +71,17 @@
         <span class="relogio num">{fmtRelogio(estado.agora - estado.rodando.inicio)}</span>
         <button onclick={() => api.mostrarSeletor()}>Trocar</button>
         <button class="primario" onclick={() => api.parar()}>Parar</button>
+        <div class="marcar" bind:this={raizMarcar}>
+          <button onclick={() => (menuMarcar = !menuMarcar)} title="Parar o timer e mudar o status da atividade">
+            Marcar como ▾
+          </button>
+          {#if menuMarcar}
+            <ul class="cartao">
+              <li><button onclick={() => marcarComo("concluida")}><span class="ponto" style:background="#2f9e5b"></span> Concluída</button></li>
+              <li><button onclick={() => marcarComo("finalizada")}><span class="ponto" style:background="#6b7380"></span> Finalizada</button></li>
+            </ul>
+          {/if}
+        </div>
       {:else}
         <span class="ponto" style:background="var(--borda)"></span>
         <div class="desc secundario">Nenhum timer rodando</div>
@@ -139,6 +165,37 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .marcar {
+    position: relative;
+  }
+
+  .marcar ul {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 20;
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+    min-width: 170px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  }
+
+  .marcar li button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    text-align: left;
+    padding: 7px 10px;
+  }
+
+  .marcar li button:hover {
+    background: var(--superficie-2);
   }
 
   .relogio {

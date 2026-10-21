@@ -2,10 +2,10 @@
   import { api, type Projeto } from "./api";
   import { estado, projetoInativo } from "./estado.svelte";
   import { infoStatus } from "./status";
+  import { corParaNovoProjeto } from "./cores";
   import IconeTipo from "./IconeTipo.svelte";
   import SeletorTipo from "./SeletorTipo.svelte";
 
-  const CORES = ["#3b6fe0", "#2f9e5b", "#d1453b", "#e0912f", "#8e5bd6", "#1fa2a8", "#c94f8a", "#6b7380"];
 
   let novoProjeto = $state("");
   let novaAtividade = $state<Record<number, string>>({});
@@ -31,7 +31,7 @@
     const nome = novoProjeto.trim();
     if (!nome) return;
     novoProjeto = "";
-    executar(() => api.criarProjeto(nome, CORES[estado.projetos.length % CORES.length]));
+    executar(() => api.criarProjeto(nome, corParaNovoProjeto(estado.projetos.length)));
   }
 
   function criarAtividade(e: SubmitEvent, p: Projeto) {
