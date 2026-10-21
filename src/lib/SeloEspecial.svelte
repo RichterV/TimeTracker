@@ -1,20 +1,8 @@
 <script lang="ts">
   import type { DiaEspecial } from "./api";
+  import { COR_ESPECIAL as CORES, ROTULO_ESPECIAL as ROTULO } from "./especiais";
 
   let { dia, compacto = false }: { dia: DiaEspecial | undefined; compacto?: boolean } = $props();
-
-  const CORES: Record<DiaEspecial["tipo"], string> = {
-    feriado: "#d1453b",
-    folga: "#1fa2a8",
-    facultativo: "#e0912f",
-    meio: "#e0912f",
-  };
-  const ROTULO: Record<DiaEspecial["tipo"], string> = {
-    feriado: "Feriado",
-    folga: "Folga",
-    facultativo: "Ponto facultativo",
-    meio: "Meio período",
-  };
 </script>
 
 {#if dia}
@@ -33,6 +21,7 @@
     vertical-align: middle;
     font-size: 11px;
     font-weight: 500;
+    line-height: 16px;
     padding: 1px 8px;
     border-radius: 10px;
     color: var(--cor);
@@ -41,6 +30,7 @@
 
   .compacto {
     font-size: 10px;
-    padding: 0 6px;
+    line-height: 15px;
+    padding: 0 7px;
   }
 </style>

@@ -3,6 +3,7 @@
   import { estado } from "./estado.svelte";
   import IconeTipo from "./IconeTipo.svelte";
   import SeloEspecial from "./SeloEspecial.svelte";
+  import { COR_ESPECIAL } from "./especiais";
   import { DIAS_CURTOS, duracaoEm, fmtDur, inicioSemana, mesmoDia, seg, somarDias } from "./tempo";
 
   let { onabrirdia }: { onabrirdia: (d: Date) => void } = $props();
@@ -117,7 +118,14 @@
   {#each semanas as semana}
     {#each semana as c}
       {#if c.doMes}
-        <button class="dia" class:hoje={mesmoDia(c.data, hoje)} onclick={() => onabrirdia(c.data)}>
+        {@const especial = estado.especial(c.data)}
+        <button
+          class="dia"
+          class:hoje={mesmoDia(c.data, hoje)}
+          class:hachurado={!!especial}
+          style:--hachura={especial ? COR_ESPECIAL[especial.tipo] : null}
+          onclick={() => onabrirdia(c.data)}
+        >
           <span class="numero">{c.data.getDate()}</span>
           <SeloEspecial dia={estado.especial(c.data)} compacto />
           {#if c.total > 0}
@@ -212,7 +220,7 @@
   }
 
   .dia {
-    background: var(--superficie);
+    background-color: var(--superficie);
     border: none;
     border-radius: 0;
     min-height: 72px;
@@ -225,12 +233,12 @@
   }
 
   .dia:hover {
-    background: var(--superficie-2);
+    background-color: var(--superficie-2);
     filter: none;
   }
 
   .dia.fora {
-    background: var(--fundo);
+    background-color: var(--fundo);
   }
 
   .numero {

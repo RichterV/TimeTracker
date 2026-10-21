@@ -4,6 +4,7 @@
   import IconeTipo from "./IconeTipo.svelte";
   import RegistroModal from "./RegistroModal.svelte";
   import SeloEspecial from "./SeloEspecial.svelte";
+  import { COR_ESPECIAL } from "./especiais";
   import { DIAS_CURTOS, diaDaSemana, duracaoEm, fmtDur, fmtHora, mesmoDia, seg, somarDias } from "./tempo";
 
   let {
@@ -302,6 +303,15 @@
         style:background-size="100% {PX_HORA}px"
         onpointerdown={(e) => iniciarCriacao(e, i)}
       >
+        {#if estado.especial(d.data)}
+          {@const e = estado.especial(d.data)!}
+          <!-- meio período: hachura só até o início do expediente -->
+          <div
+            class="hachura hachurado"
+            style:--hachura={COR_ESPECIAL[e.tipo]}
+            style:height={e.a_partir ? `${Math.max(0, (horaDe(e.a_partir) - faixa.h0) * PX_HORA)}px` : "100%"}
+          ></div>
+        {/if}
         {#if d.util}
           {#each d.expediente as exp}
             <div
@@ -426,7 +436,15 @@
   .especial {
     flex-basis: 100%;
     min-width: 0;
-    line-height: 1;
+    margin-top: 2px;
+  }
+
+  .hachura {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    pointer-events: none;
   }
 
   .dia-cab .total {

@@ -141,6 +141,15 @@ button:disabled {
   color: var(--perigo);
 }
 
+/* dia de folga, feriado ou facultativo: listras a 45° na cor do tipo (--hachura) */
+.hachurado {
+  background-image: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--hachura) 22%, transparent) 0 2px,
+    transparent 2px 9px
+  );
+}
+
 .num {
   font-variant-numeric: tabular-nums;
 }

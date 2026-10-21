@@ -4,6 +4,7 @@
   import IconeTipo from "./IconeTipo.svelte";
   import CalendarioSemana from "./CalendarioSemana.svelte";
   import SeloEspecial from "./SeloEspecial.svelte";
+  import { COR_ESPECIAL } from "./especiais";
   import {
     DIAS_CURTOS,
     DIA_SEG,
@@ -76,6 +77,14 @@
     return { grupos: lista, totais, total: totais.reduce((a, b) => a + b, 0) };
   });
 
+  /** Cor do hachurado de cada dia da semana (null quando é um dia normal). */
+  const hachuras = $derived(
+    dias.map((d) => {
+      const e = estado.especial(d);
+      return e ? COR_ESPECIAL[e.tipo] : null;
+    }),
+  );
+
   const metaSemana = $derived(dias.reduce((s, d) => s + estado.metaDoDia(d), 0));
 
   $effect(() => {
@@ -118,7 +127,7 @@
       <tr>
         <th class="nome">Atividade</th>
         {#each dias as d, i}
-          <th class:hoje={mesmoDia(d, hoje)}>
+          <th class:hoje={mesmoDia(d, hoje)} class:hachurado={!!hachuras[i]} style:--hachura={hachuras[i]}>
             <button class="dia" onclick={() => onabrirdia(d)} title={estado.especial(d)?.nome ?? "Ver o dia"}>
               {DIAS_CURTOS[i]} <span class="secundario">{d.getDate()}</span>
             </button>
@@ -132,7 +141,7 @@
       {#each grade.grupos as g}
         <tr class="grupo">
           <td class="nome"><span class="ponto" style:background={g.cor}></span> {g.nome}</td>
-          {#each g.dias as s}<td class="num">{fmt(s)}</td>{/each}
+          {#each g.dias as s, i}<td class="num" class:hachurado={!!hachuras[i]} style:--hachura={hachuras[i]}>{fmt(s)}</td>{/each}
           <td class="num">{fmt(g.total)}</td>
         </tr>
         {#each g.linhas as l (l.id)}
@@ -141,7 +150,7 @@
               <IconeTipo atividadeId={l.id} />
               <button class="link" onclick={() => (estado.atividadeAberta = l.id)}>{l.nome}</button>
             </td>
-            {#each l.dias as s}<td class="num">{fmt(s)}</td>{/each}
+            {#each l.dias as s, i}<td class="num" class:hachurado={!!hachuras[i]} style:--hachura={hachuras[i]}>{fmt(s)}</td>{/each}
             <td class="num forte">{fmt(l.total)}</td>
           </tr>
         {/each}
@@ -152,7 +161,7 @@
     <tfoot>
       <tr>
         <td class="nome">Total</td>
-        {#each grade.totais as s}<td class="num">{fmt(s)}</td>{/each}
+        {#each grade.totais as s, i}<td class="num" class:hachurado={!!hachuras[i]} style:--hachura={hachuras[i]}>{fmt(s)}</td>{/each}
         <td class="num">{fmtDur(grade.total)}</td>
       </tr>
     </tfoot>
@@ -271,7 +280,7 @@
 
   .grupo td {
     font-weight: 600;
-    background: var(--superficie-2);
+    background-color: var(--superficie-2);
   }
 
   .atividade {
