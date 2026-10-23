@@ -128,6 +128,9 @@ export const api = {
   excluirComentario: (id: number) => invoke<void>("excluir_comentario", { id }),
   abrirLink: (url: string) => invoke<void>("abrir_link", { url }),
 
+  gravarPdf: (caminho: string, bytes: Uint8Array, abrir: boolean) =>
+    invoke<void>("gravar_pdf", { caminho, bytes: Array.from(bytes), abrir }),
+
   diasEspeciais: (de: string, ate: string) => invoke<DiaEspecial[]>("dias_especiais", { de, ate }),
   listarFolgas: () => invoke<Folga[]>("listar_folgas"),
   criarFolga: (inicio: string, fim: string, descricao: string) =>

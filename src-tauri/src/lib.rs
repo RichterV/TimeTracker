@@ -409,6 +409,21 @@ fn excluir_comentario(app: AppHandle, estado: State<Estado>, id: i64) -> Res<()>
     Ok(())
 }
 
+// ---------- relatórios ----------
+
+/// Grava o PDF gerado na tela no caminho escolhido na janela de salvar e, se pedido, abre.
+#[tauri::command]
+fn gravar_pdf(app: AppHandle, caminho: String, bytes: Vec<u8>, abrir: bool) -> Res<()> {
+    if !caminho.to_lowercase().ends_with(".pdf") {
+        return Err("O arquivo precisa ter extensão .pdf.".into());
+    }
+    std::fs::write(&caminho, bytes).map_err(erro)?;
+    if abrir {
+        app.opener().open_path(caminho, None::<&str>).map_err(erro)?;
+    }
+    Ok(())
+}
+
 // ---------- feriados e folgas ----------
 
 fn data_param(s: &str) -> Res<chrono::NaiveDate> {
@@ -965,6 +980,7 @@ pub fn run() {
             salvar_comentario,
             excluir_comentario,
             abrir_link,
+            gravar_pdf,
             dias_especiais,
             listar_folgas,
             criar_folga,

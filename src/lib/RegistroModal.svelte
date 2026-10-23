@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { api, type Registro } from "./api";
+  import { api, type Anexo, type Registro } from "./api";
+  import Comentarios from "./Comentarios.svelte";
   import { estado } from "./estado.svelte";
   import Modal from "./Modal.svelte";
   import SeletorAtividade from "./SeletorAtividade.svelte";
@@ -31,7 +32,14 @@
   let data = $state(paraInputData(new Date(padraoInicio * 1000)));
   let inicio = $state(paraInputHora(padraoInicio));
   let fim = $state(padraoFim ? paraInputHora(padraoFim) : "");
-  let nota = $state(r?.nota ?? "");
+  let anexos = $state<Anexo[]>([]);
+
+  // os comentários são da atividade escolhida (os mesmos do painel)
+  $effect(() => {
+    const id = atividadeId;
+    anexos = [];
+    if (id !== null) api.listarAnexos(id).then((a) => (anexos = a));
+  });
   let erro = $state("");
 
   async function salvar(e: SubmitEvent) {
@@ -44,7 +52,7 @@
       if (f <= ini) f += DIA_SEG; // passou da meia-noite
     }
     try {
-      await api.salvarRegistro({ id: r?.id ?? null, atividade_id: atividadeId, inicio: ini, fim: f, nota: nota.trim() });
+      await api.salvarRegistro({ id: r?.id ?? null, atividade_id: atividadeId, inicio: ini, fim: f, nota: "" });
       onfechar();
     } catch (x) {
       erro = String(x);
@@ -52,8 +60,8 @@
   }
 </script>
 
-<Modal titulo={registro ? "Editar registro" : "Lançar tempo"} {onfechar}>
-  <form onsubmit={salvar}>
+<Modal titulo={registro ? "Editar registro" : "Lançar tempo"} {onfechar} largura={600}>
+  <form id="form-registro" onsubmit={salvar}>
     <label>
       Atividade
       <SeletorAtividade bind:value={atividadeId} />
@@ -76,16 +84,28 @@
         {/if}
       </label>
     </div>
-    <label>
-      Nota
-      <textarea rows="3" bind:value={nota} placeholder="O que foi feito (opcional)"></textarea>
-    </label>
-    {#if erro}<p class="erro">{erro}</p>{/if}
-    <div class="acoes">
-      <button type="button" onclick={onfechar}>Cancelar</button>
-      <button type="submit" class="primario">Salvar</button>
-    </div>
   </form>
+
+  {#if atividadeId !== null}
+    <div class="comentarios">
+      <span class="titulo-secao">Comentários da atividade</span>
+      {#key atividadeId}
+        <Comentarios
+          {atividadeId}
+          {anexos}
+          onanexos={(novos) => (anexos = [...anexos, ...novos])}
+          onanexosremovidos={(cid) => (anexos = anexos.filter((a) => a.comentario_id !== cid))}
+          onerro={(m) => (erro = m)}
+        />
+      {/key}
+    </div>
+  {/if}
+
+  {#if erro}<p class="erro">{erro}</p>{/if}
+  <div class="acoes">
+    <button type="button" onclick={onfechar}>Cancelar</button>
+    <button type="submit" form="form-registro" class="primario">Salvar</button>
+  </div>
 </Modal>
 
 <style>
@@ -104,8 +124,7 @@
   }
 
   label :global(select),
-  label input,
-  label textarea {
+  label input {
     font-size: 14px;
     color: var(--texto);
   }
@@ -116,17 +135,28 @@
     gap: 8px;
   }
 
-  textarea {
-    resize: vertical;
+  .comentarios {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--borda);
+  }
+
+  .titulo-secao {
+    font-size: 12px;
+    color: var(--texto-2);
   }
 
   .acoes {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+    margin-top: 14px;
   }
 
   .erro {
-    margin: 0;
+    margin: 10px 0 0;
   }
 </style>

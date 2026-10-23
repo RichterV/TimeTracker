@@ -114,6 +114,11 @@ const MIGRACOES: &[&str] = &[r#"
         fim TEXT NOT NULL,
         descricao TEXT NOT NULL DEFAULT ''
     );
+"#, r#"
+    -- notas dos registros viram comentários da atividade, com a data do registro
+    INSERT INTO comentario (atividade_id, texto, criado)
+        SELECT atividade_id, nota, inicio FROM registro WHERE TRIM(nota) <> '';
+    UPDATE registro SET nota = '';
 "#];
 
 pub const STATUS: &[&str] = &["nao_iniciada", "em_andamento", "concluida", "finalizada"];

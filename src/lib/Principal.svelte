@@ -8,6 +8,7 @@
   import Semana from "./Semana.svelte";
   import Mes from "./Mes.svelte";
   import Tarefas from "./Tarefas.svelte";
+  import Relatorios from "./Relatorios.svelte";
   import Projetos from "./Projetos.svelte";
   import Configuracoes from "./Configuracoes.svelte";
   import OcioModal from "./OcioModal.svelte";
@@ -16,13 +17,14 @@
   import IconeTipo from "./IconeTipo.svelte";
   import type { Status } from "./api";
 
-  type Aba = "hoje" | "semana" | "mes" | "tarefas" | "projetos" | "config";
+  type Aba = "hoje" | "semana" | "mes" | "tarefas" | "projetos" | "relatorios" | "config";
   const abas: { id: Aba; nome: string }[] = [
     { id: "hoje", nome: "Dia" },
     { id: "semana", nome: "Semana" },
     { id: "mes", nome: "Mês" },
     { id: "projetos", nome: "Projetos" },
     { id: "tarefas", nome: "Tarefas" },
+    { id: "relatorios", nome: "Relatórios" },
     { id: "config", nome: "Configurações" },
   ];
 
@@ -106,6 +108,8 @@
       <Mes onabrirdia={abrirDia} />
     {:else if aba === "tarefas"}
       <Tarefas />
+    {:else if aba === "relatorios"}
+      <Relatorios />
     {:else if aba === "projetos"}
       <Projetos />
     {:else}

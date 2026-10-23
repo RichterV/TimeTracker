@@ -1,14 +1,18 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
-  let { titulo, onfechar, children }: { titulo: string; onfechar?: () => void; children: Snippet } =
-    $props();
+  let {
+    titulo,
+    onfechar,
+    largura = 460,
+    children,
+  }: { titulo: string; onfechar?: () => void; largura?: number; children: Snippet } = $props();
 </script>
 
 <svelte:window onkeydown={(e) => e.key === "Escape" && onfechar?.()} />
 
 <div class="fundo" role="presentation" onclick={(e) => e.target === e.currentTarget && onfechar?.()}>
-  <div class="modal cartao" role="dialog" aria-modal="true" aria-label={titulo}>
+  <div class="modal cartao" role="dialog" aria-modal="true" aria-label={titulo} style:--largura="{largura}px">
     <h2>{titulo}</h2>
     {@render children()}
   </div>
@@ -26,7 +30,9 @@
   }
 
   .modal {
-    width: min(460px, calc(100vw - 32px));
+    width: min(var(--largura), calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
     padding: 20px;
     box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
   }
