@@ -171,11 +171,12 @@
 <style>
   .tipos {
     max-width: 640px;
-    margin-top: 14px;
+    margin: 14px auto 0;
   }
 
   form {
     max-width: 640px;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 14px;

@@ -22,7 +22,9 @@
   let recolhidos = $state(new Set<number>());
   let renomeando = $state<number | null>(null);
   let erro = $state("");
-  const campos = new Map<number, HTMLInputElement>();
+  const campos = new Map<number, HTMLTextAreaElement>();
+  /** Altura de um item de uma linha só (acima disso, o texto quebrou). */
+  const ALTURA_UMA_LINHA = 34;
 
   $effect(() => {
     try {
@@ -64,12 +66,16 @@
     return m;
   });
 
+  /** Ordem de exibição: pendentes antes dos concluídos, mantendo a ordem salva dentro de cada grupo. */
+  const exibidos = (pai: number | null) =>
+    [...(filhosDe.get(pai) ?? [])].sort((a, b) => Number(a.feito) - Number(b.feito));
+
   type Linha = { t: Tarefa; nivel: number; total: number; feitos: number };
 
   const linhas = $derived.by(() => {
     const saida: Linha[] = [];
     const visitar = (pai: number | null, nivel: number) => {
-      for (const t of filhosDe.get(pai) ?? []) {
+      for (const t of exibidos(pai)) {
         if (ocultarFeitos && t.feito) continue;
         const filhos = filhosDe.get(t.id) ?? [];
         saida.push({ t, nivel, total: filhos.length, feitos: filhos.filter((f) => f.feito).length });
@@ -105,9 +111,24 @@
     c.setSelectionRange(pos, pos);
   }
 
-  function registrar(no: HTMLInputElement, id: number) {
+  /** Registra o campo do item e ajusta a altura ao texto (frases longas quebram linha). */
+  function registrar(no: HTMLTextAreaElement, id: number) {
     campos.set(id, no);
-    return { destroy: () => campos.get(id) === no && campos.delete(id) };
+    const ajustar = () => {
+      no.style.height = "auto";
+      no.style.height = `${no.scrollHeight}px`;
+    };
+    ajustar();
+    no.addEventListener("input", ajustar);
+    window.addEventListener("resize", ajustar);
+    return {
+      update: ajustar,
+      destroy() {
+        no.removeEventListener("input", ajustar);
+        window.removeEventListener("resize", ajustar);
+        if (campos.get(id) === no) campos.delete(id);
+      },
+    };
   }
 
   // ---------- operações ----------
@@ -145,7 +166,8 @@
 
   async function tecla(e: KeyboardEvent, l: Linha, i: number) {
     const t = l.t;
-    const campo = e.currentTarget as HTMLInputElement;
+    const campo = e.currentTarget as HTMLTextAreaElement;
+    const umaLinha = campo.clientHeight <= ALTURA_UMA_LINHA;
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       await salvarTexto(t, campo.value);
@@ -156,7 +178,7 @@
       criar(t.pai_id, t.id);
     } else if (e.key === "Tab" && !e.shiftKey) {
       e.preventDefault();
-      const irmaos = irmaosDe(t);
+      const irmaos = exibidos(t.pai_id);
       const anterior = irmaos[irmaos.findIndex((x) => x.id === t.id) - 1];
       if (!anterior) return;
       await salvarTexto(t, campo.value);
@@ -175,10 +197,10 @@
       const anterior = linhas[i - 1]?.t;
       await excluir(t);
       if (anterior) focar(anterior.id);
-    } else if (e.key === "ArrowUp" && linhas[i - 1]) {
+    } else if (e.key === "ArrowUp" && linhas[i - 1] && (umaLinha || campo.selectionStart === 0)) {
       e.preventDefault();
       focar(linhas[i - 1].t.id);
-    } else if (e.key === "ArrowDown" && linhas[i + 1]) {
+    } else if (e.key === "ArrowDown" && linhas[i + 1] && (umaLinha || campo.selectionEnd === campo.value.length)) {
       e.preventDefault();
       focar(linhas[i + 1].t.id);
     } else if (e.key === "Escape") {
@@ -338,14 +360,15 @@
           <span class="seta"></span>
         {/if}
         <input type="checkbox" class="check" checked={t.feito} onchange={() => marcar(t)} />
-        <input
+        <textarea
           class="texto"
+          rows="1"
           value={t.texto}
           placeholder="Novo item"
           use:registrar={t.id}
           onkeydown={(e) => tecla(e, l, i)}
           onblur={(e) => salvarTexto(t, e.currentTarget.value)}
-        />
+        ></textarea>
         {#if l.total > 0}<span class="progresso secundario num">{l.feitos}/{l.total}</span>{/if}
         <button class="icone remover" title="Excluir item e subitens" onclick={() => excluir(t)}>✕</button>
       </li>
@@ -443,7 +466,7 @@
   li {
     position: relative;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 4px;
     padding: 1px 4px 1px calc(4px + var(--nivel) * 24px);
     border-radius: 6px;
@@ -526,6 +549,23 @@
     border-color: transparent;
     background: transparent;
     padding: 4px 6px;
+    line-height: 1.45;
+    resize: none;
+    overflow: hidden;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  /* ícones alinhados com a primeira linha do texto */
+  .alca,
+  .seta,
+  .progresso,
+  .remover {
+    margin-top: 5px;
+  }
+
+  .check {
+    margin-top: 8px !important;
   }
 
   .texto:focus {
