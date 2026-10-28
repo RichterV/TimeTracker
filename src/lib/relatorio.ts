@@ -125,15 +125,20 @@ const rgb = (hex: string): RGB => {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 };
 
+/** Paleta escura (mesmos tons do tema escuro do app). */
 const COR = {
-  destaque: rgb("#3b6fe0"),
-  texto: [29, 33, 41] as RGB,
-  secundario: [110, 117, 130] as RGB,
-  borda: [226, 229, 234] as RGB,
-  faixaDia: [237, 242, 252] as RGB,
-  textoDia: [35, 64, 140] as RGB,
-  fundoCartao: [246, 247, 249] as RGB,
+  fundo: rgb("#16181c"),
+  destaque: rgb("#5b8cf5"),
+  texto: rgb("#e6e8ec"),
+  secundario: rgb("#9aa2ae"),
+  borda: rgb("#343943"),
+  faixaDia: rgb("#22304f"),
+  textoDia: rgb("#a9c1ff"),
+  fundoCartao: rgb("#1f2228"),
 };
+
+/** Clareia a cor para ter contraste sobre o fundo escuro. */
+const clarear = ([r, g, b]: RGB, f = 0.3): RGB => [r + (255 - r) * f, g + (255 - g) * f, b + (255 - b) * f].map(Math.round) as RGB;
 
 const fmtDataCompleta = (d: Date) => d.toLocaleDateString("pt-BR");
 const fmtDataHora = (ts: number) =>
@@ -142,6 +147,18 @@ const fmtDataHora = (ts: number) =>
 /** Gera o PDF do relatório (A4 retrato). */
 export function gerarPdf(rel: Relatorio): Uint8Array {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pintarFundo = () => {
+    doc.setFillColor(...COR.fundo);
+    doc.rect(0, 0, doc.internal.pageSize.getWidth(), doc.internal.pageSize.getHeight(), "F");
+  };
+  // toda página nova (inclusive as criadas pela tabela) já nasce com o fundo escuro
+  const addPageOriginal = doc.addPage.bind(doc);
+  doc.addPage = ((...args: Parameters<typeof doc.addPage>) => {
+    const r = addPageOriginal(...args);
+    pintarFundo();
+    return r;
+  }) as typeof doc.addPage;
+  pintarFundo();
   const M = 14;
   const larguraPagina = doc.internal.pageSize.getWidth();
   const alturaPagina = doc.internal.pageSize.getHeight();
@@ -285,7 +302,7 @@ export function gerarPdf(rel: Relatorio): Uint8Array {
       lineColor: COR.borda,
     },
     headStyles: { textColor: COR.secundario, fontStyle: "normal", fontSize: 7.5, lineWidth: { bottom: 0.3 } },
-    footStyles: { fontStyle: "bold", fontSize: 9.5, lineWidth: { top: 0.4 }, lineColor: COR.texto },
+    footStyles: { fontStyle: "bold", fontSize: 9.5, lineWidth: { top: 0.4 }, lineColor: COR.secundario },
     columnStyles: {
       0: { cellWidth: 44 },
       2: { cellWidth: 30, cellPadding: { top: 2, bottom: 2, left: 6, right: 2 } },
@@ -298,7 +315,7 @@ export function gerarPdf(rel: Relatorio): Uint8Array {
       const m = meta[d.row.index];
       if (m.tipo !== "linha") return;
       d.cell.styles.lineWidth = { bottom: 0.15 };
-      if (d.column.index === 3) d.cell.styles.textColor = rgb(m.l.statusCor);
+      if (d.column.index === 3) d.cell.styles.textColor = clarear(rgb(m.l.statusCor));
       if (d.column.index === 0) d.cell.styles.textColor = COR.secundario;
     },
     didDrawCell: (d: CellHookData) => {

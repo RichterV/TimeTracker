@@ -44,9 +44,17 @@ if not exist "%EXE%" (
 rem --- instala em %LOCALAPPDATA%\Programs\8Pace ---
 echo Instalando em %DESTINO%...
 taskkill /IM 8Pace.exe /F >nul 2>&1
-ping -n 2 127.0.0.1 >nul
 if not exist "%DESTINO%" mkdir "%DESTINO%"
-copy /y "%EXE%" "%DESTINO%\8Pace.exe" >nul || goto :falha
+rem o processo pode demorar a liberar o arquivo: tenta copiar por ate ~10 s
+set TENTATIVAS=0
+:copiar
+ping -n 2 127.0.0.1 >nul
+copy /y "%EXE%" "%DESTINO%\8Pace.exe" >nul 2>&1 && goto :copiado
+set /a TENTATIVAS+=1
+if !TENTATIVAS! lss 10 goto :copiar
+echo [ERRO] Nao foi possivel substituir %DESTINO%\8Pace.exe (arquivo em uso).
+goto :falha
+:copiado
 
 rem --- atalhos: area de trabalho e menu Iniciar ---
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^

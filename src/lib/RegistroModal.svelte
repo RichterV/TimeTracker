@@ -42,14 +42,19 @@
   });
   let erro = $state("");
 
+  /** O campo de hora não tem segundos: se o minuto não mudou, mantém o valor original
+   *  (senão o registro passa a se sobrepor por segundos ao vizinho no calendário). */
+  const manter = (t: number, original: number | null) => (original !== null && t === original - (original % 60) ? original : t);
+
   async function salvar(e: SubmitEvent) {
     e.preventDefault();
     if (atividadeId === null) return (erro = "Escolha a atividade.");
-    const ini = deInputs(data, inicio);
+    const ini = manter(deInputs(data, inicio), padraoInicio);
     let f: number | null = null;
     if (!rodando) {
       f = deInputs(data, fim);
       if (f <= ini) f += DIA_SEG; // passou da meia-noite
+      f = manter(f, padraoFim);
     }
     try {
       await api.salvarRegistro({ id: r?.id ?? null, atividade_id: atividadeId, inicio: ini, fim: f, nota: "" });
@@ -103,6 +108,11 @@
 
   {#if erro}<p class="erro">{erro}</p>{/if}
   <div class="acoes">
+    {#if r}
+      <button type="button" class="icone perigo excluir" onclick={async () => (await estado.excluirRegistro(r)) && onfechar()}>
+        Excluir registro
+      </button>
+    {/if}
     <button type="button" onclick={onfechar}>Cancelar</button>
     <button type="submit" form="form-registro" class="primario">Salvar</button>
   </div>
@@ -154,6 +164,10 @@
     justify-content: flex-end;
     gap: 8px;
     margin-top: 14px;
+  }
+
+  .excluir {
+    margin-right: auto;
   }
 
   .erro {

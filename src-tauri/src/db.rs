@@ -121,7 +121,7 @@ const MIGRACOES: &[&str] = &[r#"
     UPDATE registro SET nota = '';
 "#];
 
-pub const STATUS: &[&str] = &["nao_iniciada", "em_andamento", "concluida", "finalizada"];
+pub const STATUS: &[&str] = &["nao_iniciada", "em_andamento", "rotina", "concluida", "finalizada"];
 
 pub fn abrir(caminho: &Path) -> Res<Connection> {
     let conn = Connection::open(caminho)?;
@@ -545,9 +545,9 @@ pub fn iniciar(conn: &mut Connection, atividade_id: i64, agora: i64) -> Res<()> 
         "INSERT INTO registro (atividade_id, inicio) VALUES (?1, ?2)",
         params![atividade_id, agora],
     )?;
-    // iniciar o timer coloca (ou devolve) a atividade em andamento
+    // iniciar o timer coloca (ou devolve) a atividade em andamento; rotinas continuam rotina
     tx.execute(
-        "UPDATE atividade SET status = 'em_andamento' WHERE id = ?1",
+        "UPDATE atividade SET status = 'em_andamento' WHERE id = ?1 AND status <> 'rotina'",
         params![atividade_id],
     )?;
     tx.commit()
@@ -696,4 +696,27 @@ pub fn retirar_ociosidade(
         )?;
     }
     tx.commit()
+}
+
+#[cfg(test)]
+mod testes {
+    use super::*;
+
+    fn status(conn: &Connection, id: i64) -> String {
+        conn.query_row("SELECT status FROM atividade WHERE id = ?1", [id], |r| r.get(0)).unwrap()
+    }
+
+    #[test]
+    fn iniciar_nao_tira_da_rotina() {
+        let mut conn = abrir(Path::new(":memory:")).unwrap();
+        let p = criar_projeto(&conn, "P", "#000000").unwrap();
+        let normal = criar_atividade(&conn, p, "normal", 1).unwrap();
+        let rotina = criar_atividade(&conn, p, "daily", 1).unwrap();
+        definir_status(&conn, rotina, "rotina").unwrap();
+
+        iniciar(&mut conn, normal, 100).unwrap();
+        iniciar(&mut conn, rotina, 200).unwrap();
+        assert_eq!(status(&conn, normal), "em_andamento");
+        assert_eq!(status(&conn, rotina), "rotina");
+    }
 }

@@ -20,7 +20,6 @@
 
   let registros = $state<Registro[]>([]);
   let editando = $state<Registro | null | undefined>(undefined); // undefined = fechado, null = novo
-  let excluindo = $state<number | null>(null);
 
   const de = $derived(seg(dia));
   const ate = $derived(de + DIA_SEG);
@@ -49,15 +48,6 @@
     return [...m.values()].sort((a, b) => b.seg - a.seg);
   });
 
-  async function excluir(id: number) {
-    if (excluindo !== id) {
-      excluindo = id;
-      setTimeout(() => excluindo === id && (excluindo = null), 3000);
-      return;
-    }
-    excluindo = null;
-    await api.excluirRegistro(id);
-  }
 </script>
 
 <div class="topo">
@@ -129,9 +119,7 @@
             <button class="icone" title="Continuar esta atividade" onclick={() => estado.iniciarAtividade(r.atividade_id)}>▶</button>
           {/if}
           <button class="icone" title="Editar" onclick={() => (editando = r)}>✎</button>
-          <button class="icone" class:perigo={excluindo === r.id} title="Excluir" onclick={() => excluir(r.id)}>
-            {excluindo === r.id ? "Confirmar?" : "✕"}
-          </button>
+          <button class="icone" title="Excluir registro" onclick={() => estado.excluirRegistro(r)}>✕</button>
         </div>
       </li>
     {/each}

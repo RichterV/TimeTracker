@@ -1,7 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { api, type Config, type DiaEspecial, type Intervalo, type Projeto, type Registro, type Status, type Tipo } from "./api";
 import { encerrada, infoStatus } from "./status";
-import { agoraSeg, diaDaSemana, paraInputData } from "./tempo";
+import { agoraSeg, diaDaSemana, fmtDataCurta, fmtDur, fmtHora, paraInputData } from "./tempo";
 
 export type AtividadeItem = {
   id: number;
@@ -146,6 +146,20 @@ class Estado {
         },
       };
     });
+  }
+
+  /** Exclui um registro de tempo após confirmação. O registro rodando para o timer e descarta o tempo. */
+  async excluirRegistro(r: Registro): Promise<boolean> {
+    const fim = r.fim ?? this.agora;
+    const quando = `${fmtDataCurta(new Date(r.inicio * 1000))}, ${fmtHora(r.inicio)}–${r.fim ? fmtHora(r.fim) : "agora"}`;
+    const aviso = r.fim === null ? " O timer será parado e esse tempo descartado." : "";
+    const ok = await this.confirmar(
+      `Excluir o registro de "${r.atividade}" em ${quando} (${fmtDur(fim - r.inicio)})?${aviso} A atividade continua existindo.`,
+      "Excluir registro",
+    );
+    if (!ok) return false;
+    await api.excluirRegistro(r.id);
+    return true;
   }
 
   /** Inicia o timer, pedindo confirmação se a atividade estiver Concluída ou Finalizada. */

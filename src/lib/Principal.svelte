@@ -73,6 +73,7 @@
         <span class="relogio num">{fmtRelogio(estado.agora - estado.rodando.inicio)}</span>
         <button onclick={() => api.mostrarSeletor()}>Trocar</button>
         <button class="primario" onclick={() => api.parar()}>Parar</button>
+        {#if estado.buscarAtividade(estado.rodando.atividade_id)?.atividade.status !== "rotina"}
         <div class="marcar" bind:this={raizMarcar}>
           <button onclick={() => (menuMarcar = !menuMarcar)} title="Parar o timer e mudar o status da atividade">
             Marcar como ▾
@@ -84,6 +85,7 @@
             </ul>
           {/if}
         </div>
+        {/if}
       {:else}
         <span class="ponto" style:background="var(--borda)"></span>
         <div class="desc secundario">Nenhum timer rodando</div>

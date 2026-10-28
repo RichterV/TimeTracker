@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export type Status = "nao_iniciada" | "em_andamento" | "concluida" | "finalizada";
+export type Status = "nao_iniciada" | "em_andamento" | "rotina" | "concluida" | "finalizada";
 
 export type Atividade = {
   id: number;

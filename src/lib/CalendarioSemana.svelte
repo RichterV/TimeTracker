@@ -114,6 +114,9 @@
 
   type Bloco = { r: Registro; ini: number; fim: number; faixa: number; faixas: number };
 
+  /** Sobreposição menor que isso (ex.: segundos perdidos ao editar no formulário) não divide a coluna. */
+  const FOLGA = 60;
+
   function blocos(d: Dia): Bloco[] {
     const itens: Bloco[] = visiveis
       .map((r) => ({ r, ini: Math.max(r.inicio, d.ini), fim: Math.min(r.fim ?? estado.agora, d.fim), faixa: 0, faixas: 1 }))
@@ -125,7 +128,7 @@
     const fechar = () => {
       const fins: number[] = [];
       for (const b of grupo) {
-        let f = fins.findIndex((x) => x <= b.ini);
+        let f = fins.findIndex((x) => x <= b.ini + FOLGA);
         if (f < 0) f = fins.push(0) - 1;
         fins[f] = b.fim;
         b.faixa = f;
@@ -135,7 +138,7 @@
       grupo = [];
     };
     for (const b of itens) {
-      if (grupo.length && b.ini >= fimGrupo) fechar();
+      if (grupo.length && b.ini + FOLGA >= fimGrupo) fechar();
       grupo.push(b);
       fimGrupo = Math.max(fimGrupo, b.fim);
     }
@@ -251,6 +254,34 @@
     }
   }
 
+  // ---------- menu do botão direito e tecla Delete ----------
+
+  /** Bloco sob o mouse (alvo da tecla Delete). */
+  let sobMouse = $state<Registro | null>(null);
+  let menu = $state<{ x: number; y: number; r: Registro } | null>(null);
+
+  function abrirMenu(e: MouseEvent, r: Registro) {
+    e.preventDefault();
+    e.stopPropagation();
+    menu = { x: Math.min(e.clientX, window.innerWidth - 200), y: Math.min(e.clientY, window.innerHeight - 130), r };
+  }
+
+  function acaoMenu(f: (r: Registro) => void) {
+    const r = menu?.r;
+    menu = null;
+    if (r) f(r);
+  }
+
+  function tecla(e: KeyboardEvent) {
+    if (e.key === "Escape") menu = null;
+    if (e.key !== "Delete" || !sobMouse) return;
+    const foco = document.activeElement;
+    if (foco instanceof HTMLInputElement || foco instanceof HTMLTextAreaElement) return;
+    if (editando || novo || estado.confirmacao || estado.atividadeAberta !== null) return;
+    e.preventDefault();
+    estado.excluirRegistro(sobMouse);
+  }
+
   /** Um clique edita o registro; dois cliques abrem o painel da atividade. */
   function clique(r: Registro) {
     if (cliqueTimer) {
@@ -268,11 +299,17 @@
   const hoje = $derived(new Date(estado.agora * 1000));
 </script>
 
-<svelte:window onpointermove={mover} onpointerup={soltar} />
+<svelte:window
+  onpointermove={mover}
+  onpointerup={soltar}
+  onkeydown={tecla}
+  onclick={() => (menu = null)}
+  oncontextmenu={() => (menu = null)}
+/>
 
 {#if erro}<p class="erro">{erro}</p>{/if}
 
-<div class="calendario cartao" class:arrastando={arraste?.moveu}>
+<div class="calendario cartao" class:arrastando={arraste?.moveu} onscroll={() => (menu = null)}>
   <div class="cabecalho" style:grid-template-columns="48px repeat({dias.length}, 1fr)">
     <div></div>
     {#each dias as d}
@@ -338,6 +375,9 @@
             style:width="calc({100 / b.faixas}% - 4px)"
             title="{b.r.atividade} · {b.r.projeto}&#10;{fmtHora(b.r.inicio)}–{b.r.fim ? fmtHora(b.r.fim) : 'agora'}{b.r.nota ? `\n${b.r.nota}` : ''}"
             onpointerdown={(e) => iniciarArrasteBloco(e, b, "mover", i)}
+            onpointerenter={() => (sobMouse = b.r)}
+            onpointerleave={() => sobMouse?.id === b.r.id && (sobMouse = null)}
+            oncontextmenu={(e) => abrirMenu(e, b.r)}
           >
             {#if b.r.fim !== null}
               <div class="alca topo-alca" onpointerdown={(e) => iniciarArrasteBloco(e, b, "topo", i)}></div>
@@ -375,8 +415,17 @@
 </div>
 
 <p class="dica secundario">
-  Arraste no vazio para lançar tempo · arraste o bloco para mover, as bordas para ajustar · clique edita, duplo clique abre a atividade
+  Arraste no vazio para lançar tempo · arraste o bloco para mover, as bordas para ajustar · clique edita, duplo clique abre a atividade · botão direito ou Delete exclui o registro
 </p>
+
+{#if menu}
+  <ul class="menu cartao" style:left="{menu.x}px" style:top="{menu.y}px">
+    <li><button onclick={() => acaoMenu((r) => (editando = r))}>Editar registro</button></li>
+    <li><button onclick={() => acaoMenu((r) => (estado.atividadeAberta = r.atividade_id))}>Abrir atividade</button></li>
+    <li class="sep"></li>
+    <li><button class="perigo" onclick={() => acaoMenu((r) => estado.excluirRegistro(r))}>Excluir registro <kbd>Del</kbd></button></li>
+  </ul>
+{/if}
 
 {#if editando}
   <RegistroModal registro={editando} dia={new Date(editando.inicio * 1000)} onfechar={() => (editando = null)} />
@@ -598,6 +647,50 @@
     height: 8px;
     border-radius: 50%;
     background: var(--perigo);
+  }
+
+  .menu {
+    position: fixed;
+    z-index: 30;
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+    min-width: 190px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+  }
+
+  .menu button {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: none;
+    border: none;
+    text-align: left;
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+
+  .menu button:hover {
+    background: var(--superficie-2);
+  }
+
+  .menu .perigo {
+    color: var(--perigo);
+  }
+
+  .menu .sep {
+    height: 1px;
+    background: var(--borda);
+    margin: 4px 0;
+  }
+
+  kbd {
+    font-size: 10px;
+    color: var(--texto-2);
+    border: 1px solid var(--borda);
+    border-radius: 3px;
+    padding: 0 4px;
   }
 
   .dica {
